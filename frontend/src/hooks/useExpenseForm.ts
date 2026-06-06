@@ -13,13 +13,23 @@ interface UseExpenseFormProps {
 
 type ExpenseFormErrors = Partial<Record<keyof ExpenseFormData, string>>;
 
+const getTodayDate = () => formatDate(new Date());
+
+const getInitialFormData = (
+  initialData?: Partial<ExpenseFormData>,
+  fallbackDate = getTodayDate(),
+): ExpenseFormData => ({
+  amount: initialData?.amount || "",
+  description: initialData?.description || "",
+  categoryId: initialData?.categoryId ?? null,
+  date: initialData?.date || fallbackDate,
+});
+
 export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
-  const [formData, setFormData] = useState<ExpenseFormData>({
-    amount: initialData?.amount || "",
-    description: initialData?.description || "",
-    categoryId: initialData?.categoryId ?? null,
-    date: initialData?.date || formatDate(new Date()),
-  });
+  const maxDate = getTodayDate();
+  const [formData, setFormData] = useState<ExpenseFormData>(() =>
+    getInitialFormData(initialData, maxDate),
+  );
 
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [submitError, setSubmitError] = useState("");
@@ -41,6 +51,7 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
 
   const validateForm = (): boolean => {
     const newErrors: ExpenseFormErrors = {};
+    const today = getTodayDate();
 
     if (!formData.amount || Number(formData.amount) <= 0) {
       newErrors.amount = "Amount must be greater than 0";
@@ -56,6 +67,8 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
 
     if (!formData.date) {
       newErrors.date = "Date is required";
+    } else if (formData.date > today) {
+      newErrors.date = "Date cannot be in the future";
     }
 
     setErrors(newErrors);
@@ -74,12 +87,7 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     try {
       await onSubmit(formData);
       // Reset form on success
-      setFormData({
-        amount: "",
-        description: "",
-        categoryId: null,
-        date: formatDate(new Date()),
-      });
+      setFormData(getInitialFormData(undefined, getTodayDate()));
       setErrors({});
     } catch (error) {
       console.error("Form submission error:", error);
@@ -92,12 +100,7 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
   };
 
   const resetForm = () => {
-    setFormData({
-      amount: initialData?.amount || "",
-      description: initialData?.description || "",
-      categoryId: initialData?.categoryId ?? null,
-      date: initialData?.date || formatDate(new Date()),
-    });
+    setFormData(getInitialFormData(initialData, getTodayDate()));
     setErrors({});
     setSubmitError("");
   };
@@ -107,6 +110,7 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     errors,
     submitError,
     isSubmitting,
+    maxDate,
     handleChange,
     handleSubmit,
     resetForm,

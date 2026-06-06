@@ -30,11 +30,18 @@ export function ExpenseForm({
   onCancel,
   submitLabel = "Add Expense",
 }: ExpenseFormProps) {
-  const { formData, errors, submitError, isSubmitting, handleChange, handleSubmit } =
-    useExpenseForm({
-      initialData,
-      onSubmit,
-    });
+  const {
+    formData,
+    errors,
+    submitError,
+    isSubmitting,
+    maxDate,
+    handleChange,
+    handleSubmit,
+  } = useExpenseForm({
+    initialData,
+    onSubmit,
+  });
 
   const formStyle: React.CSSProperties = {
     display: "flex",
@@ -91,6 +98,7 @@ export function ExpenseForm({
       <TextField
         label="Date"
         type="date"
+        max={maxDate}
         value={formData.date}
         onChange={(e) => handleChange("date", e.target.value)}
         error={errors.date}
