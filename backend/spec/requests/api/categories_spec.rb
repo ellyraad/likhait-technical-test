@@ -13,13 +13,16 @@ RSpec.describe "Api::Categories", type: :request do
       json = JSON.parse(response.body)
       expect(json.length).to eq(3)
       expect(json.map { |c| c["name"] }).to include("Food", "Transport", "Supplies")
+      expect(json.first).to include("custom")
     end
 
-    it "returns categories in alphabetical order" do
+    it "returns categories in alphabetical order with Other last" do
+      Category.create!(name: "Other")
+
       get "/api/categories"
 
       json = JSON.parse(response.body)
-      expect(json.map { |c| c["name"] }).to eq([ "Food", "Supplies", "Transport" ])
+      expect(json.map { |c| c["name"] }).to eq([ "Food", "Supplies", "Transport", "Other" ])
     end
   end
 end
