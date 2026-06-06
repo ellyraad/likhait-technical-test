@@ -8,6 +8,8 @@ import { COLORS } from "../constants/colors";
 interface MonthNavigationProps {
   currentMonth: number;
   currentYear: number;
+  maxMonth: number;
+  maxYear: number;
   onMonthChange: (month: number, year: number) => void;
 }
 
@@ -29,8 +31,18 @@ const MONTHS = [
 export function MonthNavigation({
   currentMonth,
   currentYear,
+  maxMonth,
+  maxYear,
   onMonthChange,
 }: MonthNavigationProps) {
+  const isNextDisabled =
+    currentYear > maxYear ||
+    (currentYear === maxYear && currentMonth >= maxMonth);
+  const visibleMonths =
+    currentYear === maxYear
+      ? MONTHS.filter((month) => month.value <= maxMonth)
+      : MONTHS;
+
   const handlePreviousMonth = () => {
     if (currentMonth === 1) {
       onMonthChange(12, currentYear - 1);
@@ -40,6 +52,8 @@ export function MonthNavigation({
   };
 
   const handleNextMonth = () => {
+    if (isNextDisabled) return;
+
     if (currentMonth === 12) {
       onMonthChange(1, currentYear + 1);
     } else {
@@ -52,15 +66,15 @@ export function MonthNavigation({
     alignItems: "center",
     gap: "16px",
     padding: "16px 0",
+    width: "100%",
   };
 
   const containerStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: "repeat(12, 1fr)",
+    gridTemplateColumns: `repeat(${visibleMonths.length}, minmax(0, 1fr))`,
     gap: "12px",
-    maxWidth: "900px",
-    marginRight: "32px",
     flex: 1,
+    minWidth: 0,
   };
 
   const navigationButtonStyle: React.CSSProperties = {
@@ -78,6 +92,13 @@ export function MonthNavigation({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  };
+
+  const nextNavigationButtonStyle: React.CSSProperties = {
+    ...navigationButtonStyle,
+    cursor: isNextDisabled ? "not-allowed" : "pointer",
+    opacity: isNextDisabled ? 0.5 : 1,
   };
 
   const getMonthButtonStyle = (month: number): React.CSSProperties => ({
@@ -109,7 +130,7 @@ export function MonthNavigation({
         ←
       </button>
       <div style={containerStyle}>
-        {MONTHS.map((month) => (
+        {visibleMonths.map((month) => (
           <button
             key={month.value}
             style={getMonthButtonStyle(month.value)}
@@ -130,7 +151,8 @@ export function MonthNavigation({
         ))}
       </div>
       <button
-        style={navigationButtonStyle}
+        style={nextNavigationButtonStyle}
+        disabled={isNextDisabled}
         onClick={handleNextMonth}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = COLORS.primary.p04;

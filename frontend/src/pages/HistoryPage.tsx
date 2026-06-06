@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { getExpenses, createExpense } from "../services/api";
 import { Expense, ExpenseFormData } from "../types";
 import YearNavigation from "../components/YearNavigation";
@@ -57,16 +57,53 @@ const tableContainerStyle: React.CSSProperties = {
   marginTop: "32px",
 };
 
+type YearMonth = {
+  year: number;
+  month: number;
+};
+
+const getCurrentYearMonth = (): YearMonth => {
+  const currentDate = new Date();
+
+  return {
+    year: currentDate.getFullYear(),
+    month: currentDate.getMonth() + 1,
+  };
+};
+
+const clampYearMonth = (
+  year: number,
+  month: number,
+  maxPeriod = getCurrentYearMonth(),
+): YearMonth => {
+  const selectedYear = Number.isFinite(year) ? year : maxPeriod.year;
+  const selectedMonth =
+    Number.isFinite(month) && month >= 1 && month <= 12
+      ? month
+      : maxPeriod.month;
+
+  if (selectedYear > maxPeriod.year) {
+    return maxPeriod;
+  }
+
+  if (selectedYear === maxPeriod.year && selectedMonth > maxPeriod.month) {
+    return maxPeriod;
+  }
+
+  return { year: selectedYear, month: selectedMonth };
+};
+
 const getInitialYearMonth = () => {
   const params = new URLSearchParams(window.location.search);
-  const currentDate = new Date();
+  const current = getCurrentYearMonth();
   const yearParam = params.get("year");
   const monthParam = params.get("month");
 
-  return {
-    year: yearParam ? parseInt(yearParam) : currentDate.getFullYear(),
-    month: monthParam ? parseInt(monthParam) : currentDate.getMonth() + 1,
-  };
+  return clampYearMonth(
+    yearParam ? parseInt(yearParam) : current.year,
+    monthParam ? parseInt(monthParam) : current.month,
+    current,
+  );
 };
 
 const updateURL = (year: number, month: number) => {
@@ -74,6 +111,8 @@ const updateURL = (year: number, month: number) => {
   params.set("year", year.toString());
   params.set("month", month.toString());
   const newURL = `${window.location.pathname}?${params.toString()}`;
+  if (`${window.location.pathname}${window.location.search}` === newURL) return;
+
   window.history.pushState({}, "", newURL);
 };
 
@@ -81,45 +120,52 @@ const HistoryPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState(() =>
+    getInitialYearMonth(),
+  );
   const {
     categories: availableCategories,
     loading: categoriesLoading,
     error: categoriesError,
   } = useCategories();
 
-  const initial = getInitialYearMonth();
-  const [selectedYear, setSelectedYear] = useState(initial.year);
-  const [selectedMonth, setSelectedMonth] = useState(initial.month);
-
-  // Initialize URL params if not present
-  useEffect(() => {
-    updateURL(selectedYear, selectedMonth);
-  }, []);
+  const current = getCurrentYearMonth();
 
   useEffect(() => {
-    fetchExpenses();
-  }, [selectedYear, selectedMonth]);
+    updateURL(selectedPeriod.year, selectedPeriod.month);
+  }, [selectedPeriod.year, selectedPeriod.month]);
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await getExpenses(selectedYear, selectedMonth);
+      const data = await getExpenses(selectedPeriod.year, selectedPeriod.month);
       setExpenses(data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     } finally {
       setLoading(false);
     }
+  }, [selectedPeriod.year, selectedPeriod.month]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  const updateSelectedPeriod = (year: number, month: number) => {
+    const next = clampYearMonth(year, month, current);
+    setSelectedPeriod((previous) =>
+      previous.year === next.year && previous.month === next.month
+        ? previous
+        : next,
+    );
   };
 
   const handleYearChange = (year: number) => {
-    setSelectedYear(year);
-    updateURL(year, selectedMonth);
+    updateSelectedPeriod(year, selectedPeriod.month);
   };
 
-  const handleMonthChange = (month: number) => {
-    setSelectedMonth(month);
-    updateURL(selectedYear, month);
+  const handleMonthChange = (month: number, year: number) => {
+    updateSelectedPeriod(year, month);
   };
 
   const handleAddExpense = async (data: ExpenseFormData) => {
@@ -160,7 +206,8 @@ const HistoryPage: React.FC = () => {
         <div style={leftHeaderStyle}>
           <h1 style={titleStyle}>Expense History</h1>
           <YearNavigation
-            currentYear={selectedYear}
+            currentYear={selectedPeriod.year}
+            maxYear={current.year}
             onYearChange={handleYearChange}
           />
         </div>
@@ -179,8 +226,10 @@ const HistoryPage: React.FC = () => {
       )}
 
       <MonthNavigation
-        currentMonth={selectedMonth}
-        currentYear={selectedYear}
+        currentMonth={selectedPeriod.month}
+        currentYear={selectedPeriod.year}
+        maxMonth={current.month}
+        maxYear={current.year}
         onMonthChange={handleMonthChange}
       />
 

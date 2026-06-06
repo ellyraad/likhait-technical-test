@@ -3,13 +3,17 @@ import { COLORS } from "../constants/colors";
 
 interface YearNavigationProps {
   currentYear: number;
+  maxYear: number;
   onYearChange: (year: number) => void;
 }
 
 export function YearNavigation({
   currentYear,
+  maxYear,
   onYearChange,
 }: YearNavigationProps) {
+  const isNextDisabled = currentYear >= maxYear;
+
   const containerStyle: React.CSSProperties = {
     display: "flex",
     alignItems: "center",
@@ -29,6 +33,12 @@ export function YearNavigation({
     fontSize: "18px",
     color: COLORS.secondary.s08,
     transition: "all 0.2s",
+  };
+
+  const nextButtonStyle: React.CSSProperties = {
+    ...buttonStyle,
+    cursor: isNextDisabled ? "not-allowed" : "pointer",
+    opacity: isNextDisabled ? 0.5 : 1,
   };
 
   const yearStyle: React.CSSProperties = {
@@ -57,7 +67,8 @@ export function YearNavigation({
       </button>
       <div style={yearStyle}>{currentYear}</div>
       <button
-        style={buttonStyle}
+        style={nextButtonStyle}
+        disabled={isNextDisabled}
         onClick={() => onYearChange(currentYear + 1)}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = COLORS.secondary.s02;
