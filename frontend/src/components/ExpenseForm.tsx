@@ -3,25 +3,34 @@
  */
 
 import React from "react";
-import { ExpenseFormData } from "../types";
-import { EXPENSE_CATEGORIES } from "../constants/categories";
-import { TextField, SelectBox, Button } from "../vibes";
+import { COLORS } from "../constants/colors";
+import { Category, ExpenseFormData } from "../types";
+import { Button } from "../vibes/Button";
+import { SelectBox } from "../vibes/SelectBox";
+import { TextField } from "../vibes/TextField";
 import { useExpenseForm } from "../hooks/useExpenseForm";
 
 interface ExpenseFormProps {
+  categories: Category[];
   initialData?: Partial<ExpenseFormData>;
   onSubmit: (data: ExpenseFormData) => Promise<void>;
   onCancel?: () => void;
   submitLabel?: string;
 }
 
+const submitErrorStyle: React.CSSProperties = {
+  color: COLORS.danger,
+  fontSize: "0.875rem",
+};
+
 export function ExpenseForm({
+  categories,
   initialData,
   onSubmit,
   onCancel,
   submitLabel = "Add Expense",
 }: ExpenseFormProps) {
-  const { formData, errors, isSubmitting, handleChange, handleSubmit } =
+  const { formData, errors, submitError, isSubmitting, handleChange, handleSubmit } =
     useExpenseForm({
       initialData,
       onSubmit,
@@ -39,9 +48,9 @@ export function ExpenseForm({
     marginTop: "0.5rem",
   };
 
-  const categoryOptions = EXPENSE_CATEGORIES.map((category) => ({
-    value: category,
-    label: category,
+  const categoryOptions = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
   }));
 
   return (
@@ -69,12 +78,12 @@ export function ExpenseForm({
         required
       />
 
-      <SelectBox
+      <SelectBox<number>
         label="Category"
         options={categoryOptions}
-        value={formData.category}
-        onChange={(e) => handleChange("category", e.target.value)}
-        error={errors.category}
+        value={formData.categoryId}
+        onValueChange={(value) => handleChange("categoryId", value)}
+        error={errors.categoryId}
         fullWidth
         required
       />
@@ -88,6 +97,8 @@ export function ExpenseForm({
         fullWidth
         required
       />
+
+      {submitError && <div style={submitErrorStyle}>{submitError}</div>}
 
       <div style={buttonGroupStyle}>
         <Button

@@ -6,39 +6,90 @@ import { MonthNavigation } from "../components/MonthNavigation";
 import CategoryBreakdown from "../components/CategoryBreakdown";
 import { CalendarExpenseTable } from "../components/CalendarExpenseTable";
 import { ExpenseForm } from "../components/ExpenseForm";
-import { Modal, Button } from "../vibes";
+import { Button } from "../vibes/Button";
+import { Modal } from "../vibes/Modal";
 import { COLORS } from "../constants/colors";
+import { useCategories } from "../hooks/useCategories";
+
+const pageStyle: React.CSSProperties = {
+  padding: "48px 64px",
+  minHeight: "100vh",
+  background: COLORS.secondary.s01,
+};
+
+const headerStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "24px",
+  justifyContent: "space-between",
+};
+
+const leftHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "24px",
+};
+
+const titleStyle: React.CSSProperties = {
+  fontSize: "40px",
+  fontWeight: 700,
+  color: COLORS.secondary.s10,
+  margin: 0,
+  flexShrink: 0,
+};
+
+const loadingStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  padding: "48px",
+  fontSize: "18px",
+  color: COLORS.secondary.s08,
+};
+
+const categoryErrorStyle: React.CSSProperties = {
+  margin: "16px 0 0",
+  color: COLORS.danger,
+  fontSize: "14px",
+};
+
+const tableContainerStyle: React.CSSProperties = {
+  marginTop: "32px",
+};
+
+const getInitialYearMonth = () => {
+  const params = new URLSearchParams(window.location.search);
+  const currentDate = new Date();
+  const yearParam = params.get("year");
+  const monthParam = params.get("month");
+
+  return {
+    year: yearParam ? parseInt(yearParam) : currentDate.getFullYear(),
+    month: monthParam ? parseInt(monthParam) : currentDate.getMonth() + 1,
+  };
+};
+
+const updateURL = (year: number, month: number) => {
+  const params = new URLSearchParams();
+  params.set("year", year.toString());
+  params.set("month", month.toString());
+  const newURL = `${window.location.pathname}?${params.toString()}`;
+  window.history.pushState({}, "", newURL);
+};
 
 const HistoryPage: React.FC = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Get year and month from URL params, default to current date if not provided
-  const getInitialYearMonth = () => {
-    const params = new URLSearchParams(window.location.search);
-    const currentDate = new Date();
-    const yearParam = params.get("year");
-    const monthParam = params.get("month");
-
-    return {
-      year: yearParam ? parseInt(yearParam) : currentDate.getFullYear(),
-      month: monthParam ? parseInt(monthParam) : currentDate.getMonth() + 1,
-    };
-  };
+  const {
+    categories: availableCategories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
 
   const initial = getInitialYearMonth();
   const [selectedYear, setSelectedYear] = useState(initial.year);
   const [selectedMonth, setSelectedMonth] = useState(initial.month);
-
-  // Update URL when year or month changes
-  const updateURL = (year: number, month: number) => {
-    const params = new URLSearchParams();
-    params.set("year", year.toString());
-    params.set("month", month.toString());
-    const newURL = `${window.location.pathname}?${params.toString()}`;
-    window.history.pushState({}, "", newURL);
-  };
 
   // Initialize URL params if not present
   useEffect(() => {
@@ -101,42 +152,7 @@ const HistoryPage: React.FC = () => {
   );
   const total = categories.reduce((sum, cat) => sum + cat.amount, 0);
   const totalCount = categories.reduce((sum, cat) => sum + cat.count, 0);
-
-  const pageStyle: React.CSSProperties = {
-    padding: "48px 64px",
-    minHeight: "100vh",
-    background: COLORS.secondary.s01,
-  };
-
-  const headerStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "24px",
-    justifyContent: "space-between",
-  };
-
-  const leftHeaderStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "24px",
-  };
-
-  const titleStyle: React.CSSProperties = {
-    fontSize: "40px",
-    fontWeight: 700,
-    color: COLORS.secondary.s10,
-    margin: 0,
-    flexShrink: 0,
-  };
-
-  const loadingStyle: React.CSSProperties = {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "48px",
-    fontSize: "18px",
-    color: COLORS.secondary.s08,
-  };
+  const categoriesReady = !categoriesLoading && !categoriesError;
 
   return (
     <div style={pageStyle}>
@@ -148,10 +164,19 @@ const HistoryPage: React.FC = () => {
             onYearChange={handleYearChange}
           />
         </div>
-        <Button variant="primary" onClick={() => setIsModalOpen(true)}>
+        <Button
+          variant="primary"
+          onClick={() => setIsModalOpen(true)}
+          disabled={!categoriesReady}
+        >
           Add Expense
         </Button>
       </div>
+      {categoriesError && (
+        <p style={categoryErrorStyle}>
+          Expense categories could not be loaded. Add and edit are unavailable.
+        </p>
+      )}
 
       <MonthNavigation
         currentMonth={selectedMonth}
@@ -169,8 +194,10 @@ const HistoryPage: React.FC = () => {
               total={total}
               totalCount={totalCount}
             />
-            <div style={{ marginTop: "32px" }}>
+            <div style={tableContainerStyle}>
               <CalendarExpenseTable
+                categories={availableCategories}
+                categoriesReady={categoriesReady}
                 expenses={expenses}
                 onExpenseUpdated={fetchExpenses}
               />
@@ -184,10 +211,17 @@ const HistoryPage: React.FC = () => {
         onClose={() => setIsModalOpen(false)}
         title="Add New Expense"
       >
-        <ExpenseForm
-          onSubmit={handleAddExpense}
-          onCancel={() => setIsModalOpen(false)}
-        />
+        {categoriesLoading ? (
+          <div style={loadingStyle}>Loading categories...</div>
+        ) : categoriesError ? (
+          <p style={categoryErrorStyle}>{categoriesError}</p>
+        ) : (
+          <ExpenseForm
+            categories={availableCategories}
+            onSubmit={handleAddExpense}
+            onCancel={() => setIsModalOpen(false)}
+          />
+        )}
       </Modal>
     </div>
   );

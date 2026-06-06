@@ -11,27 +11,36 @@ interface UseExpenseFormProps {
   onSubmit: (data: ExpenseFormData) => Promise<void>;
 }
 
+type ExpenseFormErrors = Partial<Record<keyof ExpenseFormData, string>>;
+
 export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
   const [formData, setFormData] = useState<ExpenseFormData>({
     amount: initialData?.amount || "",
     description: initialData?.description || "",
-    category: initialData?.category || "",
+    categoryId: initialData?.categoryId ?? null,
     date: initialData?.date || formatDate(new Date()),
   });
 
-  const [errors, setErrors] = useState<Partial<ExpenseFormData>>({});
+  const [errors, setErrors] = useState<ExpenseFormErrors>({});
+  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field: keyof ExpenseFormData, value: string) => {
+  const handleChange = <Field extends keyof ExpenseFormData>(
+    field: Field,
+    value: ExpenseFormData[Field],
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error for this field when user starts typing
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+    if (submitError) {
+      setSubmitError("");
+    }
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<ExpenseFormData> = {};
+    const newErrors: ExpenseFormErrors = {};
 
     if (!formData.amount || Number(formData.amount) <= 0) {
       newErrors.amount = "Amount must be greater than 0";
@@ -41,8 +50,8 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
       newErrors.description = "Description is required";
     }
 
-    if (!formData.category) {
-      newErrors.category = "Category is required";
+    if (formData.categoryId === null) {
+      newErrors.categoryId = "Category is required";
     }
 
     if (!formData.date) {
@@ -61,18 +70,22 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     }
 
     setIsSubmitting(true);
+    setSubmitError("");
     try {
       await onSubmit(formData);
       // Reset form on success
       setFormData({
         amount: "",
         description: "",
-        category: "",
+        categoryId: null,
         date: formatDate(new Date()),
       });
       setErrors({});
     } catch (error) {
       console.error("Form submission error:", error);
+      setSubmitError(
+        error instanceof Error ? error.message : "Failed to submit expense",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -82,15 +95,17 @@ export function useExpenseForm({ initialData, onSubmit }: UseExpenseFormProps) {
     setFormData({
       amount: initialData?.amount || "",
       description: initialData?.description || "",
-      category: initialData?.category || "",
+      categoryId: initialData?.categoryId ?? null,
       date: initialData?.date || formatDate(new Date()),
     });
     setErrors({});
+    setSubmitError("");
   };
 
   return {
     formData,
     errors,
+    submitError,
     isSubmitting,
     handleChange,
     handleSubmit,
