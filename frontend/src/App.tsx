@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import HistoryPage from "./pages/HistoryPage";
+import CategoriesPage from "./pages/CategoriesPage";
 import { COLORS } from "./constants/colors";
+import { AppPage } from "./types";
+import { CategoryProvider } from "./hooks/useCategories";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("history");
+  const [currentPage, setCurrentPage] = useState<AppPage>("history");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const appStyle: React.CSSProperties = {
@@ -24,17 +27,20 @@ function App() {
   };
 
   return (
-    <div style={appStyle}>
-      <Sidebar
-        currentPage={currentPage}
-        onNavigate={setCurrentPage}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={handleToggleSidebar}
-      />
-      <main style={mainStyle}>
-        {currentPage === "history" && <HistoryPage />}
-      </main>
-    </div>
+    <CategoryProvider>
+      <div style={appStyle}>
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={setCurrentPage}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+        />
+        <main style={mainStyle}>
+          {currentPage === "history" && <HistoryPage />}
+          {currentPage === "categories" && <CategoriesPage />}
+        </main>
+      </div>
+    </CategoryProvider>
   );
 }
 

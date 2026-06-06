@@ -2,9 +2,38 @@
  * API service for communicating with the backend
  */
 
-import { Expense, ExpenseFormData } from "../types";
+import { Category, CategoryFormData, Expense, ExpenseFormData } from "../types";
 
 const API_BASE_URL = "http://localhost:3000/api";
+
+function buildExpensePayload(data: ExpenseFormData) {
+  if (data.categoryId === null) {
+    throw new Error("Category is required");
+  }
+
+  return {
+    description: data.description,
+    amount: data.amount,
+    category_id: data.categoryId,
+    date: data.date,
+  };
+}
+
+async function buildApiError(
+  response: Response,
+  fallbackMessage: string,
+): Promise<Error> {
+  try {
+    const body = (await response.json()) as { errors?: string[] };
+    if (body.errors?.length) {
+      return new Error(body.errors.join(", "));
+    }
+  } catch {
+    return new Error(fallbackMessage);
+  }
+
+  return new Error(fallbackMessage);
+}
 
 /**
  * Fetch all expenses
@@ -36,9 +65,7 @@ export async function getExpenses(
 /**
  * Fetch all categories
  */
-export async function fetchCategories(): Promise<
-  Array<{ id: number; name: string }>
-> {
+export async function fetchCategories(): Promise<Category[]> {
   const response = await fetch(`${API_BASE_URL}/categories`);
   if (!response.ok) {
     throw new Error("Failed to fetch categories");
@@ -47,30 +74,75 @@ export async function fetchCategories(): Promise<
 }
 
 /**
+ * Create a new category
+ */
+export async function createCategory(
+  data: CategoryFormData,
+): Promise<Category> {
+  const response = await fetch(`${API_BASE_URL}/categories`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ category: data }),
+  });
+
+  if (!response.ok) {
+    throw await buildApiError(response, "Failed to create category");
+  }
+
+  return response.json();
+}
+
+/**
+ * Update an existing category
+ */
+export async function updateCategory(
+  id: number,
+  data: CategoryFormData,
+): Promise<Category> {
+  const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ category: data }),
+  });
+
+  if (!response.ok) {
+    throw await buildApiError(response, "Failed to update category");
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a category
+ */
+export async function deleteCategory(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw await buildApiError(response, "Failed to delete category");
+  }
+}
+
+/**
  * Create a new expense
  */
 export async function createExpense(data: ExpenseFormData): Promise<Expense> {
-  // Convert category name to category_id
-  const categories = await fetchCategories();
-  const category = categories.find((c) => c.name === data.category);
-
-  const expenseData = {
-    description: data.description,
-    amount: data.amount,
-    category_id: category?.id,
-    date: data.date,
-  };
-
   const response = await fetch(`${API_BASE_URL}/expenses`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ expense: expenseData }),
+    body: JSON.stringify({ expense: buildExpensePayload(data) }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to create expense");
+    throw await buildApiError(response, "Failed to create expense");
   }
 
   return response.json();
@@ -81,18 +153,18 @@ export async function createExpense(data: ExpenseFormData): Promise<Expense> {
  */
 export async function updateExpense(
   id: number,
-  data: Partial<ExpenseFormData>,
+  data: ExpenseFormData,
 ): Promise<Expense> {
   const response = await fetch(`${API_BASE_URL}/expenses/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ expense: data }),
+    body: JSON.stringify({ expense: buildExpensePayload(data) }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to update expense");
+    throw await buildApiError(response, "Failed to update expense");
   }
 
   return response.json();

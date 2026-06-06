@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { COLORS } from "../constants/colors";
+import { AppPage } from "../types";
 
 interface SidebarProps {
-  onNavigate?: (page: string) => void;
-  currentPage?: string;
+  onNavigate?: (page: AppPage) => void;
+  currentPage?: AppPage;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
@@ -14,6 +15,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed = false,
   onToggleCollapse,
 }) => {
+  const [hoveredPage, setHoveredPage] = useState<AppPage | null>(null);
+
   const sidebarStyle: React.CSSProperties = {
     width: isCollapsed ? "80px" : "360px",
     height: "100vh",
@@ -86,14 +89,19 @@ const Sidebar: React.FC<SidebarProps> = ({
     padding: "16px 0",
   };
 
-  const navItemStyle: React.CSSProperties = {
+  const getNavItemStyle = (page: AppPage): React.CSSProperties => ({
     width: "100%",
     padding: isCollapsed ? "16px" : "16px 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: isCollapsed ? "center" : "flex-start",
     gap: "16px",
-    background: currentPage === "history" ? COLORS.primary.p03 : "transparent",
+    background:
+      currentPage === page
+        ? COLORS.primary.p03
+        : hoveredPage === page
+          ? COLORS.primary.p02
+          : "transparent",
     border: "none",
     cursor: "pointer",
     fontSize: "18px",
@@ -101,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     color: COLORS.primary.p09,
     textAlign: "left",
     transition: "background 0.2s",
-  };
+  });
 
   const navTextStyle: React.CSSProperties = {
     display: isCollapsed ? "none" : "inline",
@@ -117,6 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
         <button
+          type="button"
           style={toggleButtonStyle}
           aria-label="Toggle sidebar"
           onClick={onToggleCollapse}
@@ -140,18 +149,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <nav style={navStyle}>
         <button
-          style={navItemStyle}
+          type="button"
+          style={getNavItemStyle("history")}
           onClick={() => onNavigate?.("history")}
-          onMouseEnter={(e) => {
-            if (currentPage !== "history") {
-              e.currentTarget.style.background = COLORS.primary.p02;
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (currentPage !== "history") {
-              e.currentTarget.style.background = "transparent";
-            }
-          }}
+          onMouseEnter={() => setHoveredPage("history")}
+          onMouseLeave={() => setHoveredPage(null)}
+          onFocus={() => setHoveredPage("history")}
+          onBlur={() => setHoveredPage(null)}
         >
           <svg
             width="24"
@@ -167,6 +171,30 @@ const Sidebar: React.FC<SidebarProps> = ({
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
           <span style={navTextStyle}>History</span>
+        </button>
+        <button
+          type="button"
+          style={getNavItemStyle("categories")}
+          onClick={() => onNavigate?.("categories")}
+          onMouseEnter={() => setHoveredPage("categories")}
+          onMouseLeave={() => setHoveredPage(null)}
+          onFocus={() => setHoveredPage("categories")}
+          onBlur={() => setHoveredPage(null)}
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          <span style={navTextStyle}>Categories</span>
         </button>
       </nav>
     </aside>

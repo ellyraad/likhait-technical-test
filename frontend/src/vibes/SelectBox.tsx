@@ -5,20 +5,33 @@
 import React from "react";
 import { COLORS } from "../constants/colors";
 
-interface SelectBoxProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+type SelectOption<T extends string | number> = {
+  value: T;
+  label: string;
+};
+
+interface SelectBoxProps<T extends string | number>
+  extends Omit<
+    React.SelectHTMLAttributes<HTMLSelectElement>,
+    "value" | "onChange"
+  > {
   label?: string;
   error?: string;
   fullWidth?: boolean;
-  options: Array<{ value: string; label: string }>;
+  options: Array<SelectOption<T>>;
+  value: T | null;
+  onValueChange: (value: T | null) => void;
 }
 
-export function SelectBox({
+export function SelectBox<T extends string | number>({
   label,
   error,
   fullWidth = false,
   options,
+  value,
+  onValueChange,
   ...props
-}: SelectBoxProps) {
+}: SelectBoxProps<T>) {
   const containerStyle: React.CSSProperties = {
     display: "flex",
     flexDirection: "column",
@@ -50,10 +63,24 @@ export function SelectBox({
     marginTop: "-0.25rem",
   };
 
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedValue = event.target.value;
+    const selectedOption = options.find(
+      (option) => String(option.value) === selectedValue,
+    );
+
+    onValueChange(selectedOption?.value ?? null);
+  };
+
   return (
     <div style={containerStyle}>
       {label && <label style={labelStyle}>{label}</label>}
-      <select style={selectStyle} {...props}>
+      <select
+        style={selectStyle}
+        value={value === null ? "" : String(value)}
+        onChange={handleChange}
+        {...props}
+      >
         <option value="">Select...</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
