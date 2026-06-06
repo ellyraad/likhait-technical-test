@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import HistoryPage from "./pages/HistoryPage";
+import CategoriesPage from "./pages/CategoriesPage";
 import { COLORS } from "./constants/colors";
+import { AppPage } from "./types";
 import { CategoryProvider } from "./hooks/useCategories";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("history");
+  const [currentPage, setCurrentPage] = useState<AppPage>("history");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const appStyle: React.CSSProperties = {
@@ -35,6 +37,7 @@ function App() {
         />
         <main style={mainStyle}>
           {currentPage === "history" && <HistoryPage />}
+          {currentPage === "categories" && <CategoriesPage />}
         </main>
       </div>
     </CategoryProvider>
