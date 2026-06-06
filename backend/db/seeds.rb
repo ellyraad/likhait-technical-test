@@ -18,8 +18,8 @@ categories = [
   'Other'
 ]
 
-created_categories = categories.map do |cat_name|
-  Category.create!(name: cat_name)
+created_categories = categories.map do |category_name|
+  Category.create!(name: category_name, custom: false)
 end
 
 puts "Created #{created_categories.count} categories"
